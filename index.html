@@ -1,13 +1,12 @@
-<html lang="fr">
-<head>
+<html lang="fr"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hubcode — Repository Manager</title>
     
     <!-- Polices -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
     
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -138,9 +137,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="./manifest.json">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#4b6cb7">
-<link rel="apple-touch-icon" href="icon.png"></head>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+</head>
 <body class="font-sans text-zinc-100 antialiased min-h-screen flex flex-col p-4 md:p-6">
 
     <!-- Toast Container -->
@@ -162,16 +165,14 @@
                 GitHub Token
             </label>
             <div class="flex gap-3">
-                <input type="password" id="githubToken" placeholder="Entre ton GitHub Token secret..."
-                       class="flex-1 bg-deep-700 border border-zinc-800/40 rounded-xl px-4 py-3.5 
+                <input type="password" id="githubToken" placeholder="Entre ton GitHub Token secret..." class="flex-1 bg-deep-700 border border-zinc-800/40 rounded-xl px-4 py-3.5 
                               text-cyber-amber font-mono text-sm placeholder-zinc-600
                               shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] 
                               focus:outline-none transition-all duration-200">
                 <button class="btn-press px-6 py-3.5 bg-cyber-amber rounded-xl text-deep-900 font-bold text-sm uppercase tracking-[0.12em]
-                               shadow-glow-amber hover:bg-amber-400 transition-all duration-200 flex items-center gap-2"
-                        onclick="playHum60Hz(); fetchRepositories()">
+                               shadow-glow-amber hover:bg-amber-400 transition-all duration-200 flex items-center gap-2" onclick="playHum60Hz(); fetchRepositories()">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
                     Charger les Dépôts
                 </button>
@@ -192,8 +193,7 @@
 
             <!-- Barre de recherche -->
             <div class="relative mb-5">
-                <input type="text" id="repoSearch" placeholder="Rechercher un dépôt..." oninput="filterRepositories()"
-                       class="w-full bg-deep-700 border border-zinc-800/40 rounded-xl pl-10 pr-4 py-3 
+                <input type="text" id="repoSearch" placeholder="Rechercher un dépôt..." oninput="filterRepositories()" class="w-full bg-deep-700 border border-zinc-800/40 rounded-xl pl-10 pr-4 py-3 
                               text-zinc-200 text-sm placeholder-zinc-600
                               shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] 
                               focus:outline-none focus:border-cyber-violet/40 transition-all duration-200">
@@ -479,9 +479,7 @@
                     addLog(logRepo, "Fichier récupéré", 'success');
                 } else if (getResp.status === 404) {
                     addLog(logRepo, "index.html introuvable, création d'un fichier minimal", 'warning');
-                    originalHtml = `<!DOCTYPE html><html><head><title>${repo}</title></head><body><h1>${repo}</h1>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}</script>
-</body></html>`;
+                    originalHtml = `<!DOCTYPE html><html><head><title>${repo}</title></head><body><h1>${repo}</h1></body></html>`;
                     currentSha = null;
                 } else {
                     throw new Error(`HTTP ${getResp.status}`);
@@ -938,5 +936,15 @@
         });
       }
     </script>
-</body>
-</html>
+
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker enregistré !'))
+        .catch(err => console.error('Erreur SW :', err));
+    });
+  }
+</script>
+</body></html>
