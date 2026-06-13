@@ -120,6 +120,13 @@
             font-weight: 800 !important;
         }
         
+        /* Bouton Create désactivé */
+        .btn-create-disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(0.6);
+        }
+        
         /* Toast */
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(12px) scale(0.95); }
@@ -134,6 +141,15 @@
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
         }
+        
+        /* Animation modale */
+        @keyframes modalIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        .modal-enter {
+            animation: modalIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
     </style>
 
     <link rel="manifest" href="manifest.json">
@@ -146,6 +162,49 @@
 
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed bottom-3 right-2 left-2 z-[9999] flex flex-col gap-1.5 pointer-events-none"></div>
+
+    <!-- Overlay Modale Create -->
+    <div id="createModalOverlay" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[10000] transition-opacity duration-200"></div>
+    
+    <!-- Modale Create -->
+    <div id="createModal" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10001] 
+                bg-deep-600/95 backdrop-blur-md border border-cyber-violet/30 rounded-2xl p-5 
+                shadow-[0_0_40px_rgba(0,0,0,0.9)] w-[85%] max-w-[380px] modal-enter">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">🚀</span>
+            <h3 class="text-sm font-bold text-cyber-violet tracking-wide uppercase">Nouveau Repository</h3>
+        </div>
+        
+        <label class="block text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500 mb-2 ml-0.5">
+            Nom du projet
+        </label>
+        <input type="text" id="newRepoName" placeholder="mon-super-projet"
+               class="w-full bg-deep-700 border border-zinc-800/40 rounded-xl px-4 py-3 
+                      text-zinc-100 placeholder-zinc-600 font-mono text-sm
+                      shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] 
+                      focus:outline-none focus:border-cyber-violet/50 transition-all duration-200 mb-5"
+               autocomplete="off">
+        
+        <div class="flex gap-2.5">
+            <button id="btnCancelCreate" 
+                    class="btn-press flex-1 py-3 bg-deep-500 border border-zinc-700/40 rounded-xl 
+                           text-zinc-400 font-semibold text-xs uppercase tracking-[0.08em]
+                           hover:text-white hover:border-zinc-600 transition-all duration-200"
+                    onclick="closeCreateModal()">
+                Annuler
+            </button>
+            <button id="btnConfirmCreate" 
+                    class="btn-press flex-1 py-3 bg-cyber-violet rounded-xl text-white font-bold text-xs uppercase tracking-[0.1em]
+                           shadow-glow-violet hover:bg-cyber-violet-hover transition-all duration-200
+                           flex items-center justify-center gap-2"
+                    onclick="confirmCreateRepo()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span>Créer</span>
+            </button>
+        </div>
+    </div>
 
     <!-- Conteneur principal hauteur fixe -->
     <div class="w-full max-w-[500px] mx-auto flex flex-col h-full gap-2">
@@ -175,6 +234,21 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
                     Charger
+                </button>
+            </div>
+            
+            <!-- Bouton Create -->
+            <div class="flex justify-center mt-2">
+                <button id="btnCreateRepo" 
+                        class="btn-press px-6 py-2 bg-cyber-violet/20 border border-cyber-violet/40 rounded-lg 
+                               text-cyber-violet font-bold text-[10px] uppercase tracking-[0.12em]
+                               hover:bg-cyber-violet/30 hover:border-cyber-violet/60 transition-all duration-200
+                               flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none disabled:filter disabled:grayscale-[0.6]"
+                        onclick="playHum60Hz(); openCreateModal()">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span>Create</span>
                 </button>
             </div>
         </div>
@@ -223,6 +297,7 @@
         let allRepositories = [];
         let audioCtx = null;
         let upModeState = {};
+        let isCreating = false;
 
         function b64ToUtf8(b64) {
             try {
@@ -297,6 +372,220 @@
                 dot.className = "w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] transition-all duration-300";
                 text.innerText = "PRÊT";
                 text.className = "text-[8px] text-zinc-500 font-mono uppercase tracking-wider";
+            }
+        }
+
+        function setCreateButtonState(disabled, msg = "") {
+            const btn = document.getElementById('btnCreateRepo');
+            const span = btn.querySelector('span');
+            if (disabled) {
+                btn.disabled = true;
+                btn.classList.add('btn-create-disabled');
+                if (msg) span.innerText = msg;
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('btn-create-disabled');
+                span.innerText = 'Create';
+            }
+        }
+
+        // ---------- GESTION DE LA MODALE CREATE ----------
+        function openCreateModal() {
+            document.getElementById('newRepoName').value = '';
+            document.getElementById('createModal').style.display = 'block';
+            document.getElementById('createModalOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('newRepoName').focus();
+            }, 100);
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+            document.getElementById('createModalOverlay').style.display = 'none';
+            document.getElementById('newRepoName').value = '';
+        }
+
+        function confirmCreateRepo() {
+            const repoName = document.getElementById('newRepoName').value.trim();
+            if (!repoName) {
+                showNotification("Nom du projet requis", "danger");
+                return;
+            }
+            const cleanName = repoName.replace(/\s+/g, '-').toLowerCase();
+            if (!cleanName) {
+                showNotification("Nom invalide", "danger");
+                return;
+            }
+            closeCreateModal();
+            createEmptyRepo(cleanName);
+        }
+
+        // Fermer la modale avec Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('createModal');
+                if (modal && modal.style.display === 'block') {
+                    closeCreateModal();
+                }
+            }
+            // Valider avec Enter
+            if (e.key === 'Enter') {
+                const modal = document.getElementById('createModal');
+                if (modal && modal.style.display === 'block') {
+                    confirmCreateRepo();
+                }
+            }
+        });
+
+        async function createEmptyRepo(cleanName) {
+            const token = document.getElementById('githubToken').value.trim();
+            if (!token) { showNotification("Token requis", "danger"); return; }
+            if (isCreating) return;
+            if (!cleanName) return;
+
+            isCreating = true;
+            setCreateButtonState(true, "CRÉATION...");
+            setActivityState(true, "CREATE");
+
+            try {
+                // 1. Créer le repository
+                const createResp = await fetch('https://api.github.com/user/repos', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: cleanName,
+                        auto_init: true,
+                        private: false,
+                        description: `Created by Hubcode — ${new Date().toISOString().split('T')[0]}`
+                    })
+                });
+
+                if (!createResp.ok) {
+                    const errData = await createResp.json();
+                    throw new Error(errData.message || `HTTP ${createResp.status}`);
+                }
+
+                const repoData = await createResp.json();
+                const owner = repoData.owner.login;
+                const defaultBranch = repoData.default_branch || 'main';
+
+                // 2. Créer README.md vide
+                const readmeContent = `# ${cleanName}\n\n> Créé avec Hubcode — The Code Suite\n\n## 🚀 Prêt pour le déploiement PWA\n\nCe repository est configuré avec GitHub Pages activé.\n`;
+                const readmeB64 = utf8ToB64(readmeContent);
+
+                // Récupérer le SHA du README.md créé par auto_init
+                let readmeSha = null;
+                try {
+                    const getReadmeResp = await fetch(
+                        `https://api.github.com/repos/${owner}/${cleanName}/contents/README.md?ref=${defaultBranch}`,
+                        { headers: { 'Authorization': `token ${token}` } }
+                    );
+                    if (getReadmeResp.ok) {
+                        const readmeData = await getReadmeResp.json();
+                        readmeSha = readmeData.sha;
+                    }
+                } catch (e) {}
+
+                // Mettre à jour le README.md
+                const updateReadmeBody = {
+                    message: "Hubcode: README initial",
+                    content: readmeB64,
+                    branch: defaultBranch
+                };
+                if (readmeSha) updateReadmeBody.sha = readmeSha;
+
+                await fetch(`https://api.github.com/repos/${owner}/${cleanName}/contents/README.md`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateReadmeBody)
+                });
+
+                // 3. Activer GitHub Pages
+                // Attendre un peu que le repo soit prêt
+                await new Promise(r => setTimeout(r, 2000));
+
+                let pagesEnabled = false;
+                for (let attempt = 1; attempt <= 5; attempt++) {
+                    try {
+                        const pagesResp = await fetch(
+                            `https://api.github.com/repos/${owner}/${cleanName}/pages`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `token ${token}`,
+                                    'Accept': 'application/vnd.github+json',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    source: {
+                                        branch: defaultBranch,
+                                        path: '/'
+                                    }
+                                })
+                            }
+                        );
+
+                        if (pagesResp.ok || pagesResp.status === 409) {
+                            pagesEnabled = true;
+                            break;
+                        }
+
+                        if (pagesResp.status === 422) {
+                            // Pages might already be building, check status
+                            const checkResp = await fetch(
+                                `https://api.github.com/repos/${owner}/${cleanName}/pages`,
+                                { headers: { 'Authorization': `token ${token}` } }
+                            );
+                            if (checkResp.ok) {
+                                pagesEnabled = true;
+                                break;
+                            }
+                        }
+                    } catch (e) {}
+
+                    if (attempt < 5) await new Promise(r => setTimeout(r, 2000));
+                }
+
+                // 4. Mettre à jour le statut du bouton Create
+                setCreateButtonState(true, "DÉPLOIEMENT...");
+                setActivityState(true, "DEPLOY");
+
+                // 5. Attendre que le site soit accessible
+                const siteUrl = `https://${owner.toLowerCase()}.github.io/${cleanName}/`;
+                let siteReady = false;
+
+                for (let i = 1; i <= 30; i++) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    try {
+                        const testResp = await fetch(siteUrl, { method: 'HEAD', mode: 'no-cors' });
+                        siteReady = true;
+                        break;
+                    } catch (e) {
+                        // Continue waiting
+                    }
+                }
+
+                if (siteReady) {
+                    showNotification(`✅ ${cleanName} prêt !`, 'success');
+                } else {
+                    showNotification(`⚠️ ${cleanName} créé, déploiement en cours`, 'warning');
+                }
+
+                // 6. Rafraîchir la liste des repos
+                await fetchRepositories();
+
+            } catch (err) {
+                showNotification(`❌ ${err.message}`, 'danger');
+            } finally {
+                isCreating = false;
+                setCreateButtonState(false);
+                setActivityState(false);
             }
         }
 
@@ -385,7 +674,7 @@
             if (upModeState[repo]) {
                 await pasteToGitFile(owner, repo, filename, branch, buttonElement);
             } else {
-                await copyGitFile(owner, repo, filename);
+                await copyGitFile(owner, repo, filename, branch);
             }
         }
 
@@ -643,7 +932,7 @@
                                        hover:bg-zinc-600 transition-all duration-200"
                                 onclick="playHum60Hz(); viewLivePage('${repo.owner.login}', '${repo.name}')">View</button>
                     </div>
-                    <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                    <div class="grid grid-cols-3 gap-1.5 mt-1.5">
                         <button class="btn-press py-2 bg-deep-600 border border-zinc-700/40 rounded-lg 
                                        text-orange-400 font-bold text-[9px] uppercase tracking-wider
                                        hover:bg-orange-500/10 hover:text-white transition-all duration-200 btn-back"
@@ -652,6 +941,10 @@
                                        text-red-400 font-bold text-[9px] uppercase tracking-wider
                                        hover:bg-red-500/10 hover:text-white transition-all duration-200 btn-sup"
                                 onclick="playHum60Hz(); showConfirmPanel('${repo.name}')">Sup</button>
+                        <button class="btn-press py-2 bg-deep-600 border border-zinc-700/40 rounded-lg 
+                                       text-sky-400 font-bold text-[9px] uppercase tracking-wider
+                                       hover:bg-sky-500/10 hover:text-white transition-all duration-200"
+                                onclick="playHum60Hz(); handleFileAction('${repo.owner.login}', '${repo.name}', 'README.md', '${repo.default_branch}', this)">Readme</button>
                     </div>
                     
                     <div class="hidden flex-col gap-2 bg-deep-700/90 border border-cyber-amber/40 rounded-lg p-2.5 mt-2 text-center text-[10px]" id="confirm-inject-${repo.name}">
