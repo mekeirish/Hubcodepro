@@ -328,6 +328,59 @@
         </div>
     </div>
 
+    <!-- NOUVELLE MODALE IMAGE -->
+    <div id="imageModalOverlay" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[10000] transition-opacity duration-200"></div>
+    <div id="imageModal" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10001] 
+                bg-deep-600/95 backdrop-blur-md border border-cyber-violet/30 rounded-2xl p-5 
+                shadow-[0_0_40px_rgba(0,0,0,0.9)] w-[85%] max-w-[420px] modal-enter">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-lg">🖼️</span>
+            <h3 class="text-sm font-bold text-cyber-violet tracking-wide uppercase">Upload Image</h3>
+        </div>
+        
+        <label class="block text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500 mb-1.5 ml-0.5">
+            Nom du fichier (ex: photo.png)
+        </label>
+        <input type="text" id="imageFileName" placeholder="mon-image.png"
+               class="w-full bg-deep-700 border border-zinc-800/40 rounded-xl px-4 py-3 
+                      text-zinc-100 placeholder-zinc-600 font-mono text-sm
+                      shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] 
+                      focus:outline-none focus:border-cyber-violet/50 transition-all duration-200 mb-4"
+               autocomplete="off">
+        
+        <label class="block text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-500 mb-1.5 ml-0.5">
+            Choisir une image
+        </label>
+        <input type="file" id="imageFileInput" accept="image/*"
+               class="w-full bg-deep-700 border border-zinc-800/40 rounded-xl px-4 py-3 
+                      text-zinc-100 text-sm
+                      shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] 
+                      focus:outline-none focus:border-cyber-violet/50 transition-all duration-200 
+                      file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 
+                      file:text-xs file:font-semibold file:bg-cyber-violet/20 file:text-cyber-violet 
+                      hover:file:bg-cyber-violet/30">
+        
+        <div class="flex gap-2.5 mt-5">
+            <button id="btnCancelImage" 
+                    class="btn-press flex-1 py-3 bg-deep-500 border border-zinc-700/40 rounded-xl 
+                           text-zinc-400 font-semibold text-xs uppercase tracking-[0.08em]
+                           hover:text-white hover:border-zinc-600 transition-all duration-200"
+                    onclick="closeImageModal()">
+                Annuler
+            </button>
+            <button id="btnConfirmImage" 
+                    class="btn-press flex-1 py-3 bg-cyber-violet rounded-xl text-white font-bold text-xs uppercase tracking-[0.1em]
+                           shadow-glow-violet hover:bg-cyber-violet-hover transition-all duration-200
+                           flex items-center justify-center gap-2"
+                    onclick="confirmImageUpload()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span>Valider</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Conteneur principal hauteur fixe -->
     <div class="w-full max-w-[500px] mx-auto flex flex-col h-full gap-2">
 
@@ -421,6 +474,7 @@
         let upModeState = {};
         let isCreating = false;
         let customModalContext = null;
+        let imageModalContext = null; // pour la modale image
         let posterObserver = null;
 
         // ---------- CACHE DES REPOS ----------
@@ -635,26 +689,156 @@
             commitCustomFile(owner, repo, fileName, content, branch);
         }
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const modalCustom = document.getElementById('customModal');
-                if (modalCustom && modalCustom.style.display === 'block') closeCustomModal();
-                const modalCreate = document.getElementById('createModal');
-                if (modalCreate && modalCreate.style.display === 'block') closeCreateModal();
-                const overlay = document.querySelector('.poster-fullscreen-overlay');
-                if (overlay) overlay.remove();
+        // ---------- MODALE IMAGE ----------
+        function openImageModal(repoName, owner, branch) {
+            imageModalContext = { owner, repo: repoName, branch };
+            document.getElementById('imageFileName').value = '';
+            document.getElementById('imageFileInput').value = '';
+            document.getElementById('imageModal').style.display = 'block';
+            document.getElementById('imageModalOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('imageFileName').focus();
+            }, 100);
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+            document.getElementById('imageModalOverlay').style.display = 'none';
+            imageModalContext = null;
+        }
+
+        function confirmImageUpload() {
+            const fileName = document.getElementById('imageFileName').value.trim();
+            const fileInput = document.getElementById('imageFileInput');
+            if (!fileName) {
+                showNotification("Nom de fichier requis", "danger");
+                return;
             }
-            if (e.key === 'Enter' && !e.shiftKey) {
-                const modalCustom = document.getElementById('customModal');
-                if (modalCustom && modalCustom.style.display === 'block' && document.activeElement !== document.getElementById('customFileContent')) {
-                    confirmCustomFile();
-                }
-                const modalCreate = document.getElementById('createModal');
-                if (modalCreate && modalCreate.style.display === 'block') {
-                    confirmCreateRepo();
-                }
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showNotification("Sélectionnez une image", "danger");
+                return;
             }
-        });
+            const file = fileInput.files[0];
+            if (!file.type.startsWith('image/')) {
+                showNotification("Le fichier doit être une image", "danger");
+                return;
+            }
+            if (!imageModalContext) return;
+            const { owner, repo, branch } = imageModalContext;
+            closeImageModal();
+            uploadImageToRepo(owner, repo, fileName, file, branch);
+        }
+
+        // ---------- UPLOAD IMAGE GÉNÉRIQUE ----------
+        async function uploadImageToRepo(owner, repo, filename, file, branch) {
+            const token = localStorage.getItem('hubcode_token');
+            if (!token) { showNotification("Token manquant", "danger"); return; }
+
+            const logRepo = repo;
+            clearTracker(logRepo);
+            showTracker(logRepo);
+            setActivityState(true, `IMAGE ${filename}`);
+            addLog(logRepo, `Upload de ${filename}...`, 'step');
+
+            const imageBtn = document.querySelector(`#repo-${repo} .btn-image`);
+            if (imageBtn) {
+                imageBtn.disabled = true;
+                imageBtn.classList.add('opacity-50', 'pointer-events-none');
+            }
+
+            try {
+                addLog(logRepo, `Lecture du fichier...`, 'loading');
+                const base64Data = await fileToBase64(file);
+                if (!base64Data || base64Data.length < 100) {
+                    throw new Error("Données invalides");
+                }
+                addLog(logRepo, `Fichier lu (${base64Data.length} caractères)`, 'success');
+
+                addLog(logRepo, `Vérification ${filename}...`, 'loading');
+                let currentSha = null;
+                const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}?ref=${branch}`;
+                const getResp = await fetch(getUrl, { headers: { 'Authorization': `token ${token}` } });
+                if (getResp.status === 200) {
+                    const data = await getResp.json();
+                    currentSha = data.sha;
+                    addLog(logRepo, `SHA existant`, 'success');
+                } else if (getResp.status === 404) {
+                    addLog(logRepo, `Fichier nouveau`, 'warning');
+                } else {
+                    throw new Error(`GET ${getResp.status}`);
+                }
+
+                addLog(logRepo, `Envoi de ${filename}...`, 'loading');
+                const putBody = {
+                    message: `Hubcode: upload image ${filename}`,
+                    content: base64Data,
+                    branch: branch
+                };
+                if (currentSha) putBody.sha = currentSha;
+                const putResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filename}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(putBody)
+                });
+                if (!putResp.ok) {
+                    const errData = await putResp.json();
+                    throw new Error(errData.message || `PUT ${putResp.status}`);
+                }
+                addLog(logRepo, `✅ ${filename} uploadé !`, 'success');
+                showNotification(`Image ${filename} mise en ligne`, 'success');
+
+                addLog(logRepo, `Attente déploiement...`, 'loading');
+                let deployed = false;
+                for (let i = 1; i <= 12; i++) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    try {
+                        const pagesResp = await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
+                            headers: { 'Authorization': `token ${token}` }
+                        });
+                        if (pagesResp.ok) {
+                            const data = await pagesResp.json();
+                            if (data.status === 'built') {
+                                deployed = true;
+                                addLog(logRepo, `✅ Déploiement OK`, 'success');
+                                break;
+                            } else if (data.status === 'building') {
+                                addLog(logRepo, `Build en cours...`, 'loading');
+                            }
+                        } else if (pagesResp.status === 404) {
+                            addLog(logRepo, `Pages non activé, déploiement ignoré`, 'warning');
+                            deployed = true;
+                            break;
+                        }
+                    } catch(e) {}
+                }
+                if (!deployed) addLog(logRepo, `⚠️ Déploiement lent, vérifiez plus tard`, 'warning');
+
+            } catch (err) {
+                addLog(logRepo, `ERREUR: ${err.message}`, 'error');
+                showNotification(`Échec: ${err.message}`, 'danger');
+            } finally {
+                if (imageBtn) {
+                    imageBtn.disabled = false;
+                    imageBtn.classList.remove('opacity-50', 'pointer-events-none');
+                }
+                setActivityState(false);
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = reader.result;
+                    // On retire le préfixe "data:image/...;base64,"
+                    const base64 = dataUrl.split(',')[1];
+                    if (!base64) reject(new Error("Format de données invalide"));
+                    else resolve(base64);
+                };
+                reader.onerror = () => reject(new Error("Erreur de lecture"));
+                reader.readAsDataURL(file);
+            });
+        }
 
         // ---------- COMMIT CUSTOM ----------
         async function commitCustomFile(owner, repo, filename, content, branch) {
@@ -1386,12 +1570,14 @@
                     posterMemoryCache.set(repoKey, posterDataUrl);
                 }
 
+                // Ajout du bouton 'Image' dans la liste gauche
                 const leftButtons = [
                     { label: '💉 Inject', color: 'text-cyber-amber', bg: 'bg-cyber-amber/10 hover:bg-cyber-amber/20', onclick: `showInjectConfirmPanel('${repo.name}')`, classes: 'btn-inject' },
                     { label: 'UP', color: 'text-zinc-400 hover:text-white', bg: 'hover:text-white', onclick: `toggleUpMode(this, '${repo.name}')`, classes: 'btn-up' },
                     { label: 'HTML', color: 'text-cyber-violet hover:text-white', bg: 'hover:bg-cyber-violet/10', onclick: `handleFileAction('${repo.owner.login}', '${repo.name}', 'index.html', '${repo.default_branch}', this)`, classes: '' },
                     { label: 'JSON', color: 'text-cyber-amber hover:text-white', bg: 'hover:bg-cyber-amber/10', onclick: `handleFileAction('${repo.owner.login}', '${repo.name}', 'manifest.json', '${repo.default_branch}', this)`, classes: '' },
-                    { label: 'SW', color: 'text-emerald-400 hover:text-white', bg: 'hover:bg-emerald-500/10', onclick: `handleFileAction('${repo.owner.login}', '${repo.name}', 'sw.js', '${repo.default_branch}', this)`, classes: '' }
+                    { label: 'SW', color: 'text-emerald-400 hover:text-white', bg: 'hover:bg-emerald-500/10', onclick: `handleFileAction('${repo.owner.login}', '${repo.name}', 'sw.js', '${repo.default_branch}', this)`, classes: '' },
+                    { label: 'Image', color: 'text-purple-400 hover:text-white', bg: 'hover:bg-purple-500/10', onclick: `openImageModal('${repo.name}', '${repo.owner.login}', '${repo.default_branch}')`, classes: 'btn-image' }
                 ];
 
                 const rightButtons = [
@@ -1488,6 +1674,34 @@
         }
 
         window.openPosterFullscreen = openPosterFullscreen;
+
+        // Gestion des touches (Escape, Enter) pour la modale Image
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modalImage = document.getElementById('imageModal');
+                if (modalImage && modalImage.style.display === 'block') closeImageModal();
+                const modalCustom = document.getElementById('customModal');
+                if (modalCustom && modalCustom.style.display === 'block') closeCustomModal();
+                const modalCreate = document.getElementById('createModal');
+                if (modalCreate && modalCreate.style.display === 'block') closeCreateModal();
+                const overlay = document.querySelector('.poster-fullscreen-overlay');
+                if (overlay) overlay.remove();
+            }
+            if (e.key === 'Enter' && !e.shiftKey) {
+                const modalImage = document.getElementById('imageModal');
+                if (modalImage && modalImage.style.display === 'block' && document.activeElement !== document.getElementById('imageFileInput')) {
+                    confirmImageUpload();
+                }
+                const modalCustom = document.getElementById('customModal');
+                if (modalCustom && modalCustom.style.display === 'block' && document.activeElement !== document.getElementById('customFileContent')) {
+                    confirmCustomFile();
+                }
+                const modalCreate = document.getElementById('createModal');
+                if (modalCreate && modalCreate.style.display === 'block') {
+                    confirmCreateRepo();
+                }
+            }
+        });
 
         if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(e => console.log("SW not available"))); }
     </script>
